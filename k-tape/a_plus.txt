@@ -1,0 +1,4 @@
+MyMachine 2
+START 0 0 A 1 1 R S
+A 1 * B * * S R
+B * * END * * S S
