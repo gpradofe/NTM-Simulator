@@ -1,0 +1,41 @@
+==== Turing Machine Simulation Output ====
+Machine Name: contains010
+Input String: 000
+Total Transitions Traced: 7
+String rejected in 3 steps
+---- Computation Steps ----
+[q0]000
+0[q1]00
+00[q1]0
+000[q1]
+==== Turing Machine Simulation Output ====
+Machine Name: contains010
+Input String: 010
+Total Transitions Traced: 5
+String accepted in 3 steps
+---- Computation Steps ----
+[q0]010
+0[q1]10
+01[q2]0
+0[q3]10
+==== Turing Machine Simulation Output ====
+Machine Name: contains010
+Input String: 1111
+Total Transitions Traced: 9
+String rejected in 4 steps
+---- Computation Steps ----
+[q0]1111
+1[q0]111
+11[q0]11
+111[q0]1
+1111[q0]
+==== Turing Machine Simulation Output ====
+Machine Name: contains010
+Input String: 01011010
+Total Transitions Traced: 5
+String accepted in 3 steps
+---- Computation Steps ----
+[q0]01011010
+0[q1]1011010
+01[q2]011010
+0[q3]1011010
