@@ -1,110 +1,146 @@
-class NTuringMachine:
-    def __init__(self):
-        # Initialize NTM components (states, transitions, etc.)
-        self.states = set()
-        self.transitions = {}  # Example format: {(state, symbol): [(next_state, write_symbol, move_dir), ...]}
-        self.start_state = None
-        self.accept_states = set()
-        self.reject_states = set()
-        
+import sys
+import collections
+def parse_input():
+    nta = {
+    'name': '',
+    'states': '',
+    'alphabet': '',
+    'tape': '',
+    'start': '',
+    'accept': '',
+    'reject': '',
+    'transitions': []
+    }
+    sections, input_file =[], "contains.csv"
+    opened_file = open(input_file, 'r')
+    for line in opened_file:
+        sections.append([x for x in line.strip().split(',') if x])
+    nta['name']= sections[0]
+    nta['states']= sections[1]
+    nta['alphabet']= sections[2]
+    nta['tape']= sections[3]
+    nta['start']= sections[4][0]
+    nta['accept']= sections[5]
+    nta['reject']= sections[6]
+    nta['transitions'] = sections[7:]
+    return nta
+def decompose_transition(nta):
+    dictionary = collections.defaultdict(list)
+    for i, state in enumerate(nta['transitions']):
+        size = i
+    if len(state[0])==2 and state[0] in nta['states']:
+        dictionary[state[0]].append(state[1:])
+    return dictionary
+def make_tree(nta, string, states_map):
+    #Initialize the tree by including the root node in level 0
+    tree = [[[nta['start'],-1,-1, string, 0]]]
+    depth = -1
+    while depth < 15:
+        # Keep track of tree height
+        depth +=1
+        current_level = []
+        next_node = 'na'
+        for track_pindex, state in enumerate(tree[-1]): #Reference all of nodes in last level
+            node, pheight, pindex, string, strindex = state
 
-    def parse_csv(self, filepath):
-        # Parse the TM definition from a CSV file
-        with open(filepath, 'r') as file:
-            reader = csv.reader(file)
-            
-            # Reading header lines
-            machine_name = next(reader)[0]
-            states = next(reader)[0].split(',')  # Assuming states are comma-separated
-            input_alphabet = next(reader)[0].split(',')
-            tape_alphabet = next(reader)[0].split(',')
-            start_state = next(reader)[0]
-            accept_state = next(reader)[0]
-            reject_state = next(reader)[0]
+            for child in states_map[node]:
+                if strindex >= len(string):
+                    string += '_'
+                if child[0]== string[strindex]: #Match
+#Format String: child[2] refers to the replacing character
+                    temp= string
+                    string = list(string)
+                    string[strindex] = child[2] if len(child) >= 3 else string[strindex] #Case where there are no replacement variable
+                    string = ''.join(string)
+                    #Format Direction:
+                    direction = 1 if len(child) >= 3 and child[3]=='R' else -1
+                    #child[3] is either L or R
+                    #Get Current Node:
+                    next_node = child[1]
+                    #Populating Level
+                    current_level.append([next_node, len(tree)-1, track_pindex,string, strindex+direction])
+                    #Fixing string back so it doesn't affect other cases
+                    string = temp
+                else:
+                    current_level.append([nta['reject'][0], len(tree)-1, track_pindex, string, strindex])
 
-            # Initialize NTM components
-            self.states = set(states)
-            self.input_alphabet = set(input_alphabet)
-            self.tape_alphabet = set(tape_alphabet)
-            self.start_state = start_state
-            self.accept_states = set([accept_state])
-            self.reject_states = set([reject_state])
+    tree.append(current_level)
+#Manage case were all of the inputs are rejected
+    if tree[-1] == []: return nta['reject']
+    if next_node == nta['accept'][0]:
+        return tree, nta['accept'][0]
+    elif next_node == 'na':
+        return tree, nta['reject'][0]
+    return tree
 
-            # Processing transitions
-            self.transitions = {}
-            for row in reader:
-                current_state, symbol, next_state, write_symbol, move_dir = row
-                key = (current_state, symbol)
-                if key not in self.transitions:
-                    self.transitions[key] = []
-                self.transitions[key].append((next_state, write_symbol, move_dir))
+def path_len(tree, nta, size):
+    path = []
+    flag = False
+    #Get the q_accept coordinate:
+    height, index = tree[-1][-1][1], tree[-1][-1][2]
+    for level in tree[::-1]:
+        for state in level:
+            #print(state)
+            if state[0] == nta['accept'][0]:
+                height, index = state[1],state[2]
+                path.append(nta['accept'][0])
+                flag = True
+                break
 
-            # Assign machine name as an attribute if needed
-            self.machine_name = machine_name
+        if flag: break
+    while height!= -1 and index != -1:
+        path.append(tree[height][index][0])
+        height, index = tree[height][index][1], tree[height][index][2]
+    return path[::-1]
+def configure_output(tree, nta, size):
+    path = []
+    flag = False
+    ans = []
+    height, index = tree[-1][-1][1], tree[-1][-1][2]
+    #Get the q_accept coordinate:
+    for level in tree[::-1]:
+        for state in level:
+        #print(state)
+            if state[0] == nta['accept'][0]:
+                height, index = state[1],state[2]
+                ans.append(state[3][:state[4]]+state[0]+state[3][state[4]:])
+                path.append(nta['accept'][0])
+                flag = True
+                break
+        if flag: break
+    while height!= -1 and index != -1:
+        head = tree[height][index][4]
+        curstring = tree[height][index][3]
+        curstate = tree[height][index][0]
+        if head == 0:
+            output = curstate+ curstring
+        else:
+            output = curstring[:head] + curstate + curstring[head:]
+        ans.append(output)
+        path.append(tree[height][index][0])
+        height, index = tree[height][index][1], tree[height][index][2]
+    return(ans)
+def calc_trans(tree):
+    size = 0
+    for level in tree:
+        for node in level:
+            size +=1
+    return size
+def main():
+    string = '1#1'
+    nta = parse_input()
+    states_map= decompose_transition(nta)
+    tree, status = make_tree(nta, string, states_map)
 
-    def run_ntm(self, input_string):
-        # Run the NTM on the input string using breadth-first search
-        # Initialize the tape with the input string and pad with blank symbols ('_')
-        initial_tape = ['_'] + list(input_string) + ['_']
-        initial_head_pos = 1  # Starting at the first character of the input string
-        initial_config = (self.start_state, initial_tape, initial_head_pos)
-
-        # Queue for BFS: each element is a tuple (state, tape, head position, path)
-        queue = [(initial_config, [])]
-
-        while queue:
-            (state, tape, head_pos), path = queue.pop(0)
-
-            # Check for accept state
-            if state in self.accept_states:
-                return "Accept", path + [(state, ''.join(tape), head_pos)]
-
-            # Handle implicit reject state
-            if state in self.reject_states or (state, tape[head_pos]) not in self.transitions:
-                continue
-
-            # Explore all possible transitions from the current configuration
-            for next_state, write_symbol, move_dir in self.transitions[(state, tape[head_pos])]:
-                new_tape = tape.copy()
-                new_tape[head_pos] = write_symbol
-                new_head_pos = head_pos + (1 if move_dir == 'R' else -1)
-
-                # Ensure the head does not go off the tape
-                if new_head_pos < 0 or new_head_pos >= len(new_tape):
-                    continue
-
-                new_config = (next_state, new_tape, new_head_pos)
-                new_path = path + [(state, ''.join(tape), head_pos)]
-                queue.append((new_config, new_path))
-
-        return "Reject", None
-
-    def get_next_configurations(self, config):
-        # Generate all possible next configurations from the current configuration
-        # based on the NTM's transition rules
-        current_state, tape, head_pos = config
-        current_symbol = tape[head_pos] if head_pos < len(tape) else '_'
-
-        # Check if there are any transitions for the current state and symbol
-        if (current_state, current_symbol) not in self.transitions:
-            return []  # No transitions available
-
-        next_configs = []
-        for next_state, write_symbol, move_dir in self.transitions[(current_state, current_symbol)]:
-            new_tape = tape.copy()
-            new_tape[head_pos] = write_symbol  # Write the new symbol
-
-            # Calculate the new head position
-            new_head_pos = head_pos + (1 if move_dir == 'R' else -1)
-
-            # Ensure the tape is extended if the head moves beyond the current tape
-            if new_head_pos >= len(new_tape):
-                new_tape.append('_')  # Append a blank symbol at the end
-            elif new_head_pos < 0:
-                new_head_pos = 0
-                new_tape.insert(0, '_')  # Insert a blank symbol at the beginning
-
-            next_configs.append((next_state, new_tape, new_head_pos))
-
-        return next_configs
-
+    size = calc_trans(tree)
+    print(nta['name'][0])
+    print(string)
+    print(f'{size-2} total transitions traced')
+    path = path_len(tree, nta, len(string))
+    print(f'String accepted in {len(path)-1}' if status== nta['accept'][0] else
+    f'String rejected in {len(path)-1}')
+    ans = configure_output(tree, nta, len(string))
+    for s in ans[::-1]:
+        print(s)
+if __name__=='__main__':
+    main()
